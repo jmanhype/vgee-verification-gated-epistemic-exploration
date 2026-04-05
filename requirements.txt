@@ -1,0 +1,46 @@
+# VGEE Requirements
+# Verification-Gated Epistemic Exploration: Resolving the Winner-Take-All Paradox in RLVR
+#
+# Core requirements are pinned to versions known to be compatible with Llama-3-8B
+# fine-tuning. Paper does not specify exact versions.
+#
+# [UNSPECIFIED] Python version — tested on Python 3.10+
+
+# Core ML
+torch>=2.2.0                    # PyTorch — bf16 support requires 2.x
+torchvision>=0.17.0             # [UNSPECIFIED] only needed for some transforms
+
+# HuggingFace ecosystem
+transformers>=4.40.0            # Llama-3 support requires 4.40+
+accelerate>=0.29.0              # multi-GPU / mixed precision
+datasets>=2.18.0                # HuggingFace datasets (MATH, GSM8K, BBH)
+tokenizers>=0.19.0              # fast tokenizers
+
+# PEFT (optional — for LoRA fine-tuning) [UNSPECIFIED — paper doesn't mention LoRA]
+# peft>=0.10.0
+
+# Configuration
+pyyaml>=6.0                     # YAML config parsing
+omegaconf>=2.3.0                # optional — structured config [UNSPECIFIED]
+
+# Evaluation
+# scikit-learn>=1.4.0           # optional — for additional metrics [UNSPECIFIED]
+nltk>=3.8.0                     # n-gram diversity computation
+
+# Logging / experiment tracking
+# wandb>=0.16.0                 # optional W&B logging [UNSPECIFIED]
+tqdm>=4.66.0                    # progress bars
+
+# Numerical
+numpy>=1.26.0
+
+# Testing (dev)
+pytest>=8.0.0
+pytest-cov>=5.0.0
+
+# Type checking (dev) [UNSPECIFIED]
+# mypy>=1.9.0
+
+# Optional: Flash Attention 2 for training efficiency [UNSPECIFIED — not mentioned in paper]
+# Requires CUDA 11.6+ and Ampere+ GPU
+# flash-attn>=2.5.0

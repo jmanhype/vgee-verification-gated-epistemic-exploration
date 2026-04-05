@@ -1,0 +1,182 @@
+# VGEE Base Configuration
+# Verification-Gated Epistemic Exploration: Resolving the Winner-Take-All Paradox in RLVR
+#
+# All hyperparameters are either:
+#   [PAPER]: cited directly from the paper
+#   [UNSPECIFIED]: author choice not stated in paper — alternatives noted inline
+
+# ---------------------------------------------------------------------------
+# Model
+# ---------------------------------------------------------------------------
+model:
+  # Base model to fine-tune from SFT checkpoint [PAPER §5.1]
+  # Paper specifies "decoder-only transformer (e.g., Llama-3-8B)"
+  base_model_name: "meta-llama/Meta-Llama-3-8B"  # [PAPER example]
+  # SFT checkpoint path — must be provided at runtime
+  sft_checkpoint: null  # [PAPER §5.1] "trained from SFT checkpoint"
+
+  # Mixed precision [UNSPECIFIED]
+  # Alternatives: "fp32", "bf16", "fp16"
+  # bf16 is standard for Llama-3 and avoids fp16 overflow on logits
+  mixed_precision: "bf16"  # [UNSPECIFIED]
+
+  # Gradient checkpointing to reduce VRAM [UNSPECIFIED]
+  gradient_checkpointing: true  # [UNSPECIFIED]
+
+# ---------------------------------------------------------------------------
+# Training (PPO with GAE)  [PAPER §5.1 / Appendix]
+# ---------------------------------------------------------------------------
+training:
+  # Total training iterations [PAPER §5.1]
+  num_iterations: 10
+
+  # Batch size in prompts per iteration [PAPER §5.1]
+  batch_size: 512
+
+  # Number of trajectories K sampled per prompt [UNSPECIFIED]
+  # Paper describes K trajectories but never states K explicitly.
+  # Alternatives: 4, 8, 16 — 8 is common in RLVR literature (e.g., GRPO uses 8)
+  k_trajectories: 8  # [UNSPECIFIED]
+
+  # Maximum token length for generated trajectories [UNSPECIFIED]
+  # Alternatives: 512, 1024, 2048
+  max_new_tokens: 1024  # [UNSPECIFIED]
+
+  # Uncertainty threshold δ for triggering verification gate [PAPER §4.2]
+  # Paper states δ is "tuned on validation" but gives no numeric value.
+  # Alternatives: 0.5, 1.0, 1.5, 2.0 (entropy is in nats; 1.0 nat ~ moderate uncertainty)
+  delta: 1.0  # [UNSPECIFIED — paper: "tuned on validation set"]
+
+  # PPO clip epsilon [UNSPECIFIED]
+  # Paper uses PPO but does not state clip epsilon.
+  # Alternatives: 0.1, 0.2, 0.3 — 0.2 is the canonical PPO default
+  ppo_clip_epsilon: 0.2  # [UNSPECIFIED]
+
+  # GAE discount factor γ [PAPER §5.1]
+  gae_gamma: 0.99
+
+  # GAE lambda λ [PAPER §5.1]
+  gae_lambda: 0.95
+
+  # Value function loss coefficient c_1 [UNSPECIFIED]
+  # Paper includes c_1 in Eq 5 but never states its value.
+  # Alternatives: 0.5 (PPO paper default), 1.0
+  value_function_coeff: 0.5  # [UNSPECIFIED — appears as c_1 in Eq 5]
+
+  # Entropy bonus coefficient (separate from KL regularizer) [UNSPECIFIED]
+  # Paper does not mention an entropy bonus; set to 0 to match paper.
+  entropy_bonus_coeff: 0.0  # [UNSPECIFIED — set to 0 per paper omission]
+
+  # Gradient clipping [UNSPECIFIED]
+  # Alternatives: 0.5, 1.0, 5.0
+  max_grad_norm: 1.0  # [UNSPECIFIED]
+
+  # PPO epochs per batch of collected trajectories [UNSPECIFIED]
+  # Alternatives: 1, 2, 4
+  ppo_epochs: 1  # [UNSPECIFIED]
+
+  # Mini-batch size for PPO update step [UNSPECIFIED]
+  # Alternatives: 32, 64, 128
+  mini_batch_size: 64  # [UNSPECIFIED]
+
+# ---------------------------------------------------------------------------
+# Optimizer  [PAPER §5.1 / UNSPECIFIED]
+# ---------------------------------------------------------------------------
+optimizer:
+  # Learning rate [PAPER §5.1]
+  lr: 1.0e-5
+
+  # LR schedule [PAPER §5.1] "cosine decay"
+  lr_schedule: "cosine"
+
+  # Adam β1 [UNSPECIFIED]
+  # Alternatives: 0.9 (standard Adam), 0.95 (common in LLM fine-tuning)
+  adam_beta1: 0.9  # [UNSPECIFIED]
+
+  # Adam β2 [UNSPECIFIED]
+  # Alternatives: 0.95, 0.999
+  adam_beta2: 0.95  # [UNSPECIFIED]
+
+  # Adam ε [UNSPECIFIED]
+  # Alternatives: 1e-8 (default), 1e-5 (numerically stable for bf16)
+  adam_epsilon: 1.0e-5  # [UNSPECIFIED]
+
+  # Weight decay [UNSPECIFIED]
+  # Alternatives: 0.0, 0.01, 0.1
+  weight_decay: 0.01  # [UNSPECIFIED]
+
+  # Warmup steps [UNSPECIFIED]
+  warmup_steps: 10  # [UNSPECIFIED]
+
+# ---------------------------------------------------------------------------
+# Conditional KL-Regularizer  [PAPER §4.3]
+# ---------------------------------------------------------------------------
+kl_regularizer:
+  # Base KL penalty coefficient β_base [UNSPECIFIED]
+  # Paper defines β_eff = β_base (Case A) and β_eff = κ · β_base (Case B)
+  # but never states β_base numerically.
+  # Alternatives: 0.01, 0.05, 0.1 — 0.04 is the DeepSeekMath/DAPO default
+  beta_base: 0.04  # [UNSPECIFIED — paper uses β_base notation]
+
+  # Strict KL multiplier κ for failed exploration (Case B) [UNSPECIFIED]
+  # Paper states κ >> 1 but gives no value.
+  # Alternatives: 5, 10, 20, 50
+  kappa: 10.0  # [UNSPECIFIED — paper: "κ >> 1"]
+
+  # Reference model update strategy [UNSPECIFIED]
+  # "frozen": reference model is fixed SFT checkpoint
+  # "ema": exponential moving average update
+  # Alternatives: "frozen", "ema"
+  reference_model_strategy: "frozen"  # [UNSPECIFIED]
+
+  # EMA decay if reference_model_strategy == "ema" [UNSPECIFIED]
+  ema_decay: 0.99  # [UNSPECIFIED]
+
+# ---------------------------------------------------------------------------
+# Verification Gate  [PAPER §4.2]
+# ---------------------------------------------------------------------------
+verification:
+  # Verification backend for MATH/GSM8K [PAPER §5.1]
+  # "python_interpreter": execute generated code/expression and check answer
+  math_verifier: "python_interpreter"
+
+  # Verification backend for BBH [PAPER §5.1]
+  # "majority_voting": collect N samples and use majority as ground truth
+  bbh_verifier: "majority_voting"
+
+  # Number of samples for majority voting on BBH [PAPER §5.1]
+  majority_vote_samples: 5
+
+  # Timeout in seconds for Python interpreter verification [UNSPECIFIED]
+  # Alternatives: 5, 10, 30
+  interpreter_timeout: 10  # [UNSPECIFIED]
+
+# ---------------------------------------------------------------------------
+# Evaluation  [PAPER §5.2]
+# ---------------------------------------------------------------------------
+evaluation:
+  # Evaluation datasets [PAPER §5.2]
+  eval_datasets:
+    - "MATH500"
+    - "GSM8K"
+    - "BBH"
+
+  # Number of ECE calibration bins [UNSPECIFIED]
+  # Standard value; paper does not specify.
+  ece_n_bins: 15  # [UNSPECIFIED]
+
+  # Number of samples for reasoning diversity metric [UNSPECIFIED]
+  diversity_samples: 8  # [UNSPECIFIED]
+
+  # Evaluation frequency (every N iterations) [UNSPECIFIED]
+  eval_every_n_iterations: 1  # [UNSPECIFIED]
+
+# ---------------------------------------------------------------------------
+# Logging / Checkpointing
+# ---------------------------------------------------------------------------
+logging:
+  output_dir: "outputs/vgee_run"
+  log_every_n_steps: 10
+  save_every_n_iterations: 2
+  wandb_project: "vgee"
+  wandb_enabled: false
